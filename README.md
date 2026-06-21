@@ -4,6 +4,9 @@ An elegant, browser-based hand-controlled obstacle navigation and collection gam
 
 AirFlow combines premium Apple-inspired minimalist visual aesthetics with state-of-the-art browser tracking, targeting a stable **90 FPS** on capable high-refresh-rate hardware and **60 FPS** on standard mobile/desktop devices.
 
+🔗 **Live Demo**: [airflow-hand.vercel.app](https://airflow-hand.vercel.app)
+
+
 ---
 
 ## 🌟 Key Features
