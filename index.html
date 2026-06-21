@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>AirFlow | Hand-Tracking Energy Navigation Game</title>
+  <meta name="description" content="A premium browser-based hand-tracking obstacle navigation and collection game. Powered by MediaPipe.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./css/styles.css">
+</head>
+<body>
+  <!-- Main Application Wrapper -->
+  <div id="app" class="theme-default">
+    
+    <!-- Gameplay Canvas -->
+    <canvas id="game-canvas"></canvas>
+
+    <!-- Overlay Screens Container -->
+    <div id="ui-container">
+
+      <!-- SPLASH SCREEN -->
+      <section id="screen-splash" class="screen active">
+        <div class="glass-panel text-center">
+          <div class="logo-container">
+            <h1 class="logo-text">Air<span>Flow</span></h1>
+            <p class="logo-sub">Glow with the Stream</p>
+          </div>
+          <div class="loader-ring">
+            <div class="loader-circle"></div>
+          </div>
+          <p id="splash-status" class="status-message">Initializing Neural Trackers...</p>
+        </div>
+      </section>
+
+      <!-- PRIVACY & PERMISSION SCREEN -->
+      <section id="screen-permission" class="screen">
+        <div class="glass-panel max-width-md">
+          <h2 class="title-glow">Camera Permission</h2>
+          <div class="permission-icon">
+            <svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
+            </svg>
+          </div>
+          
+          <div class="privacy-notice">
+            <h3>🔒 Absolute Privacy Guarantee</h3>
+            <p>AirFlow processes all camera data <strong>100% locally</strong> in your browser sandbox using WebAssembly. No video, images, or tracking coordinates are ever sent, saved, or uploaded to any server. Your privacy is fully secure.</p>
+          </div>
+
+          <p class="description-text">To play, we need access to your webcam. Place yourself in a well-lit area and sit comfortably.</p>
+          
+          <div class="button-group">
+            <button id="btn-request-permission" class="btn btn-primary">Enable Camera & Continue</button>
+            <button id="btn-fallback-input" class="btn btn-secondary">Play with Mouse/Touch</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- CALIBRATION SCREEN -->
+      <section id="screen-calibration" class="screen">
+        <div class="glass-panel max-width-lg">
+          <h2 class="title-glow">Calibrate Range</h2>
+          <p class="description-text">Let's map your comfortable hand movement space. Move your hand to the indicators on the screen.</p>
+          
+          <div class="calibration-container">
+            <div id="calibration-box">
+              <div id="calib-target" class="calib-marker top-left"></div>
+              <div id="calib-hand-indicator" class="calib-hand"></div>
+              <span id="calib-instruction">Move your hand to the top-left circle</span>
+            </div>
+          </div>
+
+          <div class="progress-bar-container">
+            <div id="calibration-progress" class="progress-bar-fill" style="width: 0%"></div>
+          </div>
+
+          <div class="button-group">
+            <button id="btn-skip-calibration" class="btn btn-secondary">Use Defaults</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- MAIN MENU -->
+      <section id="screen-menu" class="screen">
+        <div class="menu-container">
+          <div class="logo-container">
+            <h1 class="logo-text">Air<span>Flow</span></h1>
+            <p class="logo-sub">Premium Hand-Tracking Flow</p>
+          </div>
+
+          <div class="menu-buttons">
+            <button id="btn-start-game" class="btn btn-primary btn-lg">Start Journey</button>
+            <button id="btn-open-settings" class="btn btn-secondary">Settings</button>
+            <button id="btn-open-stats" class="btn btn-secondary">Stats & Trophies</button>
+            <button id="btn-open-leaderboard" class="btn btn-secondary">Leaderboards</button>
+          </div>
+
+          <div class="menu-footer">
+            <span id="menu-tracking-status" class="badge badge-warning">Camera Active (Uncalibrated)</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section id="screen-settings" class="screen">
+        <div class="glass-panel max-width-md">
+          <h2 class="title-glow">Settings</h2>
+          
+          <div class="settings-list">
+            <!-- Audio -->
+            <div class="setting-item">
+              <label for="slider-music">Music Volume</label>
+              <div class="control-row">
+                <input type="range" id="slider-music" min="0" max="100" value="70">
+                <span id="val-music">70%</span>
+              </div>
+            </div>
+            <div class="setting-item">
+              <label for="slider-sfx">SFX Volume</label>
+              <div class="control-row">
+                <input type="range" id="slider-sfx" min="0" max="100" value="80">
+                <span id="val-sfx">80%</span>
+              </div>
+            </div>
+
+            <!-- Sensitivity -->
+            <div class="setting-item">
+              <label for="slider-sensitivity">Tracking Sensitivity</label>
+              <div class="control-row">
+                <input type="range" id="slider-sensitivity" min="5" max="30" value="15">
+                <span id="val-sensitivity">1.5x</span>
+              </div>
+              <p class="help-text">Increases orb movement range relative to hand movement.</p>
+            </div>
+
+            <!-- Graphics Quality -->
+            <div class="setting-item">
+              <label>Graphics Quality</label>
+              <div class="btn-toggle-group" id="quality-selector">
+                <button class="btn btn-toggle" data-quality="low">Low</button>
+                <button class="btn btn-toggle active" data-quality="medium">Medium</button>
+                <button class="btn btn-toggle" data-quality="high">High</button>
+              </div>
+              <p class="help-text">High quality enables full neon glows. Low scales particle count for 90 FPS on mobile.</p>
+            </div>
+
+            <!-- Accessibility Settings -->
+            <div class="setting-divider">Accessibility</div>
+            
+            <div class="setting-item flex-row">
+              <div>
+                <label for="toggle-colorblind">Colorblind High-Contrast</label>
+                <p class="help-text">Use high-contrast shapes & palettes.</p>
+              </div>
+              <input type="checkbox" id="toggle-colorblind" class="switch">
+            </div>
+
+            <div class="setting-item flex-row">
+              <div>
+                <label for="toggle-left-handed">Left-Handed Mode</label>
+                <p class="help-text">Mirrors camera feedback and flips HUD alignment.</p>
+              </div>
+              <input type="checkbox" id="toggle-left-handed" class="switch">
+            </div>
+
+            <div class="setting-item flex-row">
+              <div>
+                <label for="toggle-reduced-motion">Reduced Motion</label>
+                <p class="help-text">Disables screen shakes and warp blur lines.</p>
+              </div>
+              <input type="checkbox" id="toggle-reduced-motion" class="switch">
+            </div>
+          </div>
+
+          <div class="button-group">
+            <button id="btn-settings-back" class="btn btn-primary">Save & Back</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- STATISTICS & ACHIVEMENTS -->
+      <section id="screen-stats" class="screen">
+        <div class="glass-panel max-width-lg">
+          <h2 class="title-glow">Stats & Achievements</h2>
+          
+          <div class="tabs">
+            <button class="tab-btn active" data-tab="stats-general">General Stats</button>
+            <button class="tab-btn" data-tab="stats-achievements">Achievements</button>
+          </div>
+
+          <div class="tab-content active" id="stats-general">
+            <div class="stats-grid">
+              <div class="stat-card">
+                <span class="stat-val" id="stat-high-score">0</span>
+                <span class="stat-label">High Score</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-val" id="stat-total-distance">0m</span>
+                <span class="stat-label">Total Distance</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-val" id="stat-fragments-collected">0</span>
+                <span class="stat-label">Gems Collected</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-val" id="stat-time-played">0h 0m</span>
+                <span class="stat-label">Total Flight Time</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-content" id="stats-achievements">
+            <div class="achievements-container" id="achievements-list">
+              <!-- Dynamically populated achievements -->
+            </div>
+          </div>
+
+          <div class="button-group">
+            <button id="btn-stats-back" class="btn btn-primary">Back to Menu</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- LEADERBOARDS -->
+      <section id="screen-leaderboard" class="screen">
+        <div class="glass-panel max-width-md">
+          <h2 class="title-glow">Local Leaderboards</h2>
+          <p class="description-text">Your top flight sessions.</p>
+          
+          <div class="leaderboard-container">
+            <table class="leaderboard-table">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Pilot Name</th>
+                  <th>Score</th>
+                  <th>Max Combo</th>
+                </tr>
+              </thead>
+              <tbody id="leaderboard-body">
+                <!-- Dynamically populated list -->
+              </tbody>
+            </table>
+          </div>
+
+          <div class="button-group">
+            <button id="btn-leaderboard-back" class="btn btn-primary">Back to Menu</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- GAME SCREEN HUD -->
+      <div id="game-hud" class="hud-overlay">
+        <!-- Top HUD Row -->
+        <div class="hud-top">
+          <div class="hud-left">
+            <div class="hud-stat-box score-box">
+              <div class="hud-label">SCORE</div>
+              <div class="hud-value" id="hud-score">000,000</div>
+            </div>
+            <div class="hud-stat-box multiplier-box">
+              <div class="hud-label">MULTIPLIER</div>
+              <div class="hud-value-accent" id="hud-multiplier">x1.0</div>
+              <div class="multiplier-ring-outer">
+                <div class="multiplier-ring-fill" id="hud-multiplier-progress" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+          <div class="hud-right">
+            <div class="hud-stat-box shield-box" id="hud-shield-container">
+              <span class="shield-icon">🛡️</span>
+              <div class="shield-meter">
+                <div id="hud-shield-bar" class="shield-fill" style="width: 100%"></div>
+              </div>
+            </div>
+            <div class="hud-stat-box energy-box">
+              <div class="hud-label">ENERGY</div>
+              <div class="energy-bar">
+                <div id="hud-energy-bar" class="energy-fill" style="width: 100%"></div>
+              </div>
+            </div>
+            <button id="btn-hud-pause" class="btn-pause-circle">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                <rect x="6" y="5" width="4" height="14" rx="1" />
+                <rect x="14" y="5" width="4" height="14" rx="1" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Ability indicators -->
+        <div id="hud-active-ability" class="ability-indicator hidden">
+          <span class="ability-icon" id="ability-icon">🔮</span>
+          <span class="ability-name" id="ability-name">MAGNET</span>
+          <span class="ability-timer" id="ability-timer">100%</span>
+        </div>
+
+        <!-- Gesture Feedback Mini-Cam Overlay (Draggable & Collapsible) -->
+        <div id="tracking-preview-card" class="tracking-card">
+          <div class="tracking-card-header">
+            <span>Gesture Tracking Feed</span>
+            <button id="btn-toggle-preview" class="btn-toggle-small">▼</button>
+          </div>
+          <div class="tracking-card-body" id="tracking-preview-body">
+            <div class="video-container">
+              <video id="webcam" autoplay playsinline muted></video>
+              <canvas id="landmark-canvas"></canvas>
+            </div>
+            <div class="gesture-badge-row">
+              <span class="badge" id="tracking-gesture-name">Open Palm</span>
+              <span class="badge" id="tracking-fps">FPS: --</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Float Notification Message overlay -->
+        <div id="hud-toast" class="hud-toast hidden">Shield Deactivated</div>
+      </div>
+
+      <!-- PAUSE OVERLAY -->
+      <section id="screen-pause" class="screen">
+        <div class="glass-panel text-center max-width-sm">
+          <h2 class="title-glow">Journey Paused</h2>
+          
+          <div class="menu-buttons">
+            <button id="btn-pause-resume" class="btn btn-primary">Resume</button>
+            <button id="btn-pause-restart" class="btn btn-secondary">Restart</button>
+            <button id="btn-pause-settings" class="btn btn-secondary">Settings</button>
+            <button id="btn-pause-quit" class="btn btn-danger">Abandon flight</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- GAME OVER SCREEN -->
+      <section id="screen-gameover" class="screen">
+        <div class="glass-panel text-center max-width-md">
+          <h2 class="title-glow text-danger">Session Concluded</h2>
+          <p id="gameover-reason" class="description-text">Energy depleted.</p>
+          
+          <div class="gameover-stats">
+            <div class="gameover-stat-item">
+              <span class="stat-label">Final Score</span>
+              <span class="stat-val text-primary" id="go-score">0</span>
+            </div>
+            <div class="gameover-stat-item">
+              <span class="stat-label">Flight Distance</span>
+              <span class="stat-val" id="go-distance">0m</span>
+            </div>
+            <div class="gameover-stat-item">
+              <span class="stat-label">Max Combo</span>
+              <span class="stat-val text-accent" id="go-combo">x1</span>
+            </div>
+          </div>
+
+          <div id="new-high-score-tag" class="high-score-banner hidden">🏆 NEW RECORD!</div>
+
+          <!-- Name Entry for Leaderboard -->
+          <div class="name-entry-container" id="leaderboard-name-container">
+            <label for="player-name-input">Enter Pilot Initials:</label>
+            <input type="text" id="player-name-input" maxlength="3" value="PIL" placeholder="AAA">
+          </div>
+
+          <div class="button-group">
+            <button id="btn-go-retry" class="btn btn-primary">Fly Again</button>
+            <button id="btn-go-menu" class="btn btn-secondary">Main Menu</button>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
